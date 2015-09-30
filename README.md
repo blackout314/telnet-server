@@ -10,3 +10,28 @@ Idea from: https://github.com/zachflower/resume-server
    |_|\___|_|_| |_|\___|\__|____/ \___|_|    \_/ \___|_|   
 
 ```
+## install
+
+Install necessary packages.
+
+```
+npm install
+```
+
+## setup config
+
+Copy sample config file..
+
+```
+cp config-sample.js config.js
+```
+
+..and edit it!
+
+## start
+
+```
+npm start
+```
+
+## enjoy!
