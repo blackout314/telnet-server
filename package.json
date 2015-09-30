@@ -1,0 +1,29 @@
+{
+	"name": "telnet-server",
+	"version": "0.0.1",
+	"author": "Carlo Denaro <me@carlodenaro.com>",
+	"description": "little telnet server",
+	"contributors": [ 
+		{
+			"name": "Carlo Denaro",
+			"email": "me@carlodenaro.com"
+		} 
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/blackout314/telnet-server.git"
+	},
+	"license": "MIT",
+	"engines": {
+		"node": ">=0.10.15"
+	},
+	"dependencies": {
+		"figlet": "1.1.1",
+		"sprintf-js": "1.0.2",
+		"word-wrap": "1.0.3"
+	},
+  "scripts": {
+    "start": "node server.js"
+  }
+}
+
