@@ -3,106 +3,113 @@
  * Sources: http://www.davidmclifton.com/2011/07/22/simple-telnet-server-in-node-js/
  */
 
-var net = require('net');
-var figlet = require('figlet');
-var sprintf = require("sprintf-js").sprintf;
-var vsprintf = require("sprintf-js").vsprintf;
-var wrap = require('word-wrap');
-
-try {
-  require.resolve('./config');
-} catch(e) {
-  console.error("config.js file not found, use config-sample.js as a reference");
-  process.exit(e.code);
-}
-
-var config = require('./config');
+/*
+ * require lib
+ */
+var net     = require('net'),
+  figlet    = require('figlet'),
+  sprintf   = require("sprintf-js").sprintf,
+  vsprintf  = require("sprintf-js").vsprintf,
+  wrap      = require('word-wrap');
 
 /*
- * Global Variables
+ * new implement of telnetServer
  */
-var sockets = [];
-var lastInput = '';
+var telnetServer = (function(){
+  var config  = loadConfig(),
+    server    = {},
+    sockets   = [],
+    lastInput = "";
 
-/*
- * Cleans the input of carriage return, newline
- */
-function cleanInput(data) {
-	return data.toString().replace(/(\r\n|\n|\r)/gm,"").toLowerCase();
-}
+  function loadConfig() {
+    try {
+      require.resolve('./config');
+    } catch(e) {
+      console.error("config.js file not found, use config-sample.js as a reference");
+      process.exit(e.code);
+    }
+    return require('./config');
+  }
 
-/*
- * Send Data to Socket
- */
-function sendData(socket, data) {
-	socket.write(data);
-	socket.write("$ ");
-}
+  function sendData(socket, data) {
+    socket.write(data);
+    socket.write("$ ");
+  }
 
-/*
- * Method executed when data is received from a socket
- */
-function receiveData(socket, data) {
-	var cleanData = cleanInput(data);
+  function closeSocket(socket) {
+    var i = sockets.indexOf(socket);
+    if (i != -1) {
+      sockets.splice(i, 1);
+    }
+  }
 
-	if ( cleanData != '!!' ) {
-		lastInput = cleanData;
-	} else {
-		cleanData = lastInput;
-	}
+  function printHeader(socket) {
+    socket.write("\n" + config.last + "\n\n");
+    socket.write(figlet.textSync(config.motd));
+    socket.write("\n");
+    sendData(socket, "Type 'help' for more information.\n");
+  }
 
-	var output = "";
+  function initTriggers(socket) {
+    socket.on('data', function(data) {
+      receiveData(socket, data);
+    })
+    socket.on('end', function() {
+      closeSocket(socket);
+    })
+  }
 
-	switch ( cleanData ) {
-		case 'quit':
-		case 'exit':
-			socket.end('Goodbye!\n');
-			break;
-		case 'help':
-			output += "These shell commands are defined internally.  Type 'help' to see this list.\n";
-			output += "Type 'help <command>' for more information about a particular command.\n";
+  function newSocket(socket) {
+    sockets.push(socket);
+    
+    printHeader(socket);
+    initTriggers(socket);
+  }
 
-			output += "\n";
-			output += "Commands:\n";
+  function cleanInput(data) {
+    return data.toString().replace(/(\r\n|\n|\r)/gm,"").toLowerCase();
+  }
 
-			sendData(socket, output);
-			break;
-		default:
-			sendData(socket, "error: " + cleanData + ": command not found.\n");
-			break;
-	}
-}
+  function receiveData(socket, data) {
+    var cleanData = cleanInput(data);
 
-/*
- * Method executed when a socket ends
- */
-function closeSocket(socket) {
-	var i = sockets.indexOf(socket);
+    if (cleanData != '!!') {
+      lastInput = cleanData;
+    } else {
+      cleanData = lastInput;
+    }
 
-	if (i != -1) {
-		sockets.splice(i, 1);
-	}
-}
- 
-/*
- * Callback method executed when a new TCP socket is opened.
- */
-function newSocket(socket) {
-	sockets.push(socket);
-	socket.write("\n"+config.last+"\n\n");
-	socket.write(figlet.textSync(config.motd));
-	socket.write("\n");
+    parseCommand(socket, cleanData);
+  }
 
-	sendData(socket, "Type 'help' for more information.\n");
+  function parseCommand(socket, action) {
+    switch (action) {
+      case 'quit':
+      case 'exit':
+        socket.end('Goodbye!\n');
+        break;
+      case 'help':
+        var output = "";
+        output += "These shell commands are defined internally.  Type 'help' to see this list.\n";
+        output += "Type 'help <command>' for more information about a particular command.\n";
+        
+        output += "\n";
+        output += "Commands:\n";
+        sendData(socket, output);
+        break;
+      default:
+        sendData(socket, "error: " + action + ": command not found.\n");
+        break;
+    }
+  }
 
-	socket.on('data', function(data) {
-		receiveData(socket, data);
-	})
+  return {
+    "create" : function() {
+      server = net.createServer(newSocket);
+      server.listen(config.port);
+    }
+  }
+}());
 
-	socket.on('end', function() {
-		closeSocket(socket);
-	})
-}
- 
-var server = net.createServer(newSocket);
-server.listen(config.port);
+/* go */ 
+telnetServer.create();
